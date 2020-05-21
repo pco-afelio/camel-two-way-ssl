@@ -1,0 +1,57 @@
+keystore and truststore generation:
+
+    SSL one way
+
+        target server one:
+
+            keytool -storetype pkcs12 -keystore keystore.p12 -storepass testing -genkey -alias test -validity 1825 \
+                -dname "CN=target-server-one,OU=test,O=pco,L=Liège,ST=,C=BE" \
+                -ext "SAN=DNS:test,DNS:localhost,IP:127.0.0.1"
+
+            keytool -export -keystore keystore.p12 -alias test -file server-one.crt
+
+        target server two
+
+            keytool -storetype pkcs12 -keystore keystore.p12 -storepass testing -genkey -alias test -validity 1825 \
+                -dname "CN=target-server-two,OU=test,O=pco,L=Liège,ST=,C=BE" \
+                -ext "SAN=DNS:test,DNS:localhost,IP:127.0.0.1"
+
+            keytool -export -keystore keystore.p12 -alias test -file server-two.crt
+
+        camel server
+
+            keytool -import -alias target-server-one -file server-one.crt -storetype pkcs12 -keystore truststore.p12
+            keytool -import -alias target-server-two -file server-two.crt -storetype pkcs12 -keystore truststore.p12
+
+    SSL two ways (between camel server and target server two)
+
+        camel server
+
+            keytool -storetype pkcs12 -keystore keystore.p12 -storepass testing -genkey -alias test -validity 1825 \
+                -keyalg RSA -keysize 2048 -dname "CN=camel-server,OU=test,O=pco,L=Liège,ST=,C=BE" \
+                -ext "SAN=DNS:test,DNS:localhost,IP:127.0.0.1"
+
+            keytool -export -keystore keystore.p12 -alias test -file camel-server.crt
+
+        target server two
+
+            keytool -import -alias camel-server -file camel-server.crt -storetype pkcs12 -keystore truststore.p12
+
+
+VM parameters
+
+    facultative:
+
+        -Djavax.net.debug=ssl:handshake:verbose
+
+    mandatory (only for camel server):
+
+        -Djavax.net.ssl.trustStore=[path-to]/truststore.p12
+        -Djavax.net.ssl.trustStorePassword=testing
+
+tests
+
+    curl http://localhost:8080/by-rest-template/one
+    curl http://localhost:8080/by-rest-template/two
+    curl http://localhost:8080/by-camel-route/one
+    curl http://localhost:8080/by-camel-route/two
